@@ -789,12 +789,17 @@ export default function Volfied() {
 
   // ─── RENDER JSX ───
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen" style={{ background: "#06060f" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#06060f" }}>
       {/* HUD */}
       <div
-        className="flex items-center justify-between px-4 py-2 rounded-t"
+
         style={{
           width: W,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "8px 16px",
+          borderRadius: "8px 8px 0 0",
           background: "linear-gradient(180deg, #141428 0%, #0c0c1a 100%)",
           borderBottom: "1px solid #1a2a3a",
           fontFamily: "monospace",
@@ -802,15 +807,15 @@ export default function Volfied() {
           letterSpacing: 1,
         }}
       >
-        <div className="flex gap-5 items-center">
+        <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
           <span style={{ color: "#4a6a7a" }}>LVL <span style={{ color: "#7fdbca", fontWeight: 700 }}>{hud.level}</span></span>
           <span style={{ color: "#4a6a7a" }}>SCORE <span style={{ color: "#7fdbca", fontWeight: 700 }}>{hud.score}</span></span>
         </div>
-        <div className="flex gap-4 items-center">
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           {hud.shield > 0 && <span style={{ color: "#ffd93d", fontSize: 11 }}>SHIELD {hud.shield.toFixed(1)}s</span>}
           {hud.speed > 0 && <span style={{ color: "#44ff88", fontSize: 11 }}>SPEED {hud.speed.toFixed(1)}s</span>}
         </div>
-        <div className="flex gap-5 items-center">
+        <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
           <span style={{ color: "#4a6a7a" }}>
             AREA <span style={{ color: "#ffd93d", fontWeight: 700 }}>{hud.pct.toFixed(1)}%</span>
             <span style={{ color: "#2a3a4a" }}> / {TARGET}%</span>
@@ -831,8 +836,7 @@ export default function Volfied() {
         {/* MENU OVERLAY */}
         {screen === "menu" && (
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center"
-            style={{ background: "rgba(5, 5, 15, 0.94)" }}
+            style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(5, 5, 15, 0.94)" }}
           >
             <div style={{ fontFamily: "monospace", fontSize: 56, fontWeight: 900, color: "#7fdbca", letterSpacing: 10, textShadow: "0 0 30px rgba(127,219,202,0.4)" }}>
               VOLFIED
@@ -842,8 +846,11 @@ export default function Volfied() {
             </div>
             <button
               onClick={startGame}
-              className="px-8 py-3 rounded cursor-pointer transition-all"
               style={{
+                padding: "12px 32px",
+                borderRadius: 6,
+                cursor: "pointer",
+                transition: "all 0.2s",
                 background: "linear-gradient(135deg, #0d3b4e 0%, #1a5a6a 100%)",
                 border: "1px solid #2a7a8a",
                 fontFamily: "monospace",
@@ -868,8 +875,7 @@ export default function Volfied() {
         {/* GAME OVER OVERLAY */}
         {screen === "gameover" && (
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center"
-            style={{ background: "rgba(5, 5, 15, 0.92)" }}
+            style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(5, 5, 15, 0.92)" }}
           >
             <div style={{ fontFamily: "monospace", fontSize: 44, fontWeight: 900, color: "#ff6b6b", letterSpacing: 6, textShadow: "0 0 30px rgba(255,107,107,0.4)", marginBottom: 10 }}>
               GAME OVER
@@ -882,8 +888,11 @@ export default function Volfied() {
             </div>
             <button
               onClick={startGame}
-              className="px-8 py-3 rounded cursor-pointer transition-all"
               style={{
+                padding: "12px 32px",
+                borderRadius: 6,
+                cursor: "pointer",
+                transition: "all 0.2s",
                 background: "linear-gradient(135deg, #3b1a1a 0%, #5a2a2a 100%)",
                 border: "1px solid #8a3a3a",
                 fontFamily: "monospace",
@@ -902,9 +911,12 @@ export default function Volfied() {
 
       {/* BOTTOM BAR */}
       <div
-        className="flex items-center justify-center py-1"
         style={{
           width: W,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "4px 0",
           background: "#0c0c1a",
           borderTop: "1px solid #1a2a3a",
           fontFamily: "monospace",
