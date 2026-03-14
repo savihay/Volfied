@@ -823,18 +823,6 @@ PLAYING ──[Esc/P]──> PAUSED ──[Esc/P]──> PLAYING  [level 16 done
 - [x] **T10.5** Controls shown on menu screen
 - [x] **T10.6** Game over screen with score and level reached
 
-### Phase 11: Polish & Balance
-> Playtesting and tuning
-
-- [ ] **T11.1** Playtest all 16 levels; tune enemy speeds, boss attack patterns, shield timers
-- [ ] **T11.2** Tune power-up durations and spawn positions for balance
-- [ ] **T11.3** Tune scoring values for satisfying progression
-- [ ] **T11.4** Fix edge cases: trail near corners, boss stuck in thin corridors, power-up blocks on borders
-- [ ] **T11.5** Performance optimization: ensure 60fps on target hardware
-- [x] **T11.6** Mobile touch controls (virtual d-pad + CUT/OK buttons)
-- [x] **T11.7** Responsive canvas scaling (width: 100%, aspect ratio preserved)
-- [ ] **T11.8** Final deployment to GitHub Pages
-
 ---
 
 ## Summary

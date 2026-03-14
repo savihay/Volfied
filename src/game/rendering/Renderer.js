@@ -2,12 +2,12 @@ import { FW, FH, COLORS, STATE, TARGET_AREA } from '../constants.js';
 import { LEVELS } from '../levels/levelData.js';
 import { CentipedeBoss, SnakeBoss, TwinFacesBoss } from '../entities/Boss.js';
 import { getHighScores } from '../highscores.js';
+import { generateBackground } from './backgrounds.js';
+import { getBossSprite, getEnemySprite, getPlayerSprite, getPowerUpBlockSprite } from './sprites.js';
 
 export class Renderer {
   constructor(ctx) {
     this.ctx = ctx;
-    this._bgCache = null;
-    this._bgCacheLevel = -1;
   }
 
   render(game) {
@@ -70,94 +70,8 @@ export class Renderer {
     ctx.restore();
   }
 
-  /**
-   * Generate a procedural background image for a level (cached as offscreen canvas).
-   */
   _getBackgroundCanvas(level) {
-    if (this._bgCacheLevel === level && this._bgCache) return this._bgCache;
-
-    const offscreen = document.createElement('canvas');
-    offscreen.width = FW;
-    offscreen.height = FH;
-    const c = offscreen.getContext('2d');
-    const lvlIdx = Math.min(level - 1, LEVELS.length - 1);
-    const lvl = LEVELS[lvlIdx];
-    const [c1, c2] = lvl.bgColors;
-
-    // Base gradient
-    const bgGrad = c.createLinearGradient(0, 0, FW, FH);
-    bgGrad.addColorStop(0, c1);
-    bgGrad.addColorStop(1, c2);
-    c.fillStyle = bgGrad;
-    c.fillRect(0, 0, FW, FH);
-
-    // Per-level procedural pattern
-    const seed = level * 137;
-    const rng = (i) => ((seed * 16807 + i * 2531011) % 2147483647) / 2147483647;
-
-    // Scattered circles/shapes forming a pattern
-    c.globalAlpha = 0.08;
-    for (let i = 0; i < 60; i++) {
-      const x = rng(i * 3) * FW;
-      const y = rng(i * 3 + 1) * FH;
-      const r = 10 + rng(i * 3 + 2) * 40;
-      const hue = (level * 25 + rng(i) * 40) % 360;
-      c.fillStyle = `hsl(${hue}, 60%, 50%)`;
-      c.beginPath();
-      c.arc(x, y, r, 0, Math.PI * 2);
-      c.fill();
-    }
-
-    // Grid lines
-    c.globalAlpha = 0.05;
-    c.strokeStyle = '#ffffff';
-    c.lineWidth = 0.5;
-    for (let x = 0; x <= FW; x += 20) {
-      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, FH); c.stroke();
-    }
-    for (let y = 0; y <= FH; y += 20) {
-      c.beginPath(); c.moveTo(0, y); c.lineTo(FW, y); c.stroke();
-    }
-
-    // Decorative elements based on level theme
-    c.globalAlpha = 0.06;
-    for (let i = 0; i < 30; i++) {
-      const x = rng(i * 5 + 100) * FW;
-      const y = rng(i * 5 + 101) * FH;
-      const w = 5 + rng(i * 5 + 102) * 25;
-      const h = 5 + rng(i * 5 + 103) * 25;
-      c.fillStyle = '#ffffff';
-      if (level % 3 === 0) {
-        // Diamonds
-        c.save();
-        c.translate(x, y);
-        c.rotate(Math.PI / 4);
-        c.fillRect(-w / 2, -h / 2, w, h);
-        c.restore();
-      } else if (level % 3 === 1) {
-        // Stars
-        c.beginPath();
-        for (let j = 0; j < 5; j++) {
-          const angle = (j / 5) * Math.PI * 2 - Math.PI / 2;
-          const px = x + Math.cos(angle) * w;
-          const py = y + Math.sin(angle) * w;
-          j === 0 ? c.moveTo(px, py) : c.lineTo(px, py);
-        }
-        c.fill();
-      } else {
-        // Rings
-        c.strokeStyle = '#ffffff';
-        c.lineWidth = 2;
-        c.beginPath();
-        c.arc(x, y, w, 0, Math.PI * 2);
-        c.stroke();
-      }
-    }
-    c.globalAlpha = 1;
-
-    this._bgCache = offscreen;
-    this._bgCacheLevel = level;
-    return offscreen;
+    return generateBackground(level);
   }
 
   _drawBackground(ctx, game) {
@@ -238,35 +152,21 @@ export class Renderer {
   _drawPowerUpBlocks(ctx, game, now) {
     for (const block of game.powerUpBlocks) {
       const pulse = block.getPulse();
-      const s = block.size * pulse;
-      const half = s / 2;
+      const sprite = getPowerUpBlockSprite(block.type, block.isRedBlock, pulse);
+      const s = sprite.width;
 
+      // Glow effect
       if (block.isRedBlock) {
         ctx.shadowColor = '#ff4444';
         ctx.shadowBlur = 12;
-        ctx.fillStyle = `rgba(255,68,68,${0.6 + pulse * 0.4})`;
       } else {
         ctx.shadowColor = '#88ffaa';
         ctx.shadowBlur = 8;
-        ctx.fillStyle = `rgba(136,255,170,${0.5 + pulse * 0.3})`;
       }
 
-      ctx.fillRect(block.x - half, block.y - half, s, s);
-
-      // Border
-      ctx.strokeStyle = block.isRedBlock ? '#ff8888' : '#aaffcc';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(block.x - half, block.y - half, s, s);
-
-      // Letter
+      ctx.drawImage(sprite, block.x - s / 2, block.y - s / 2);
       ctx.shadowBlur = 0;
-      ctx.font = 'bold 10px monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(block.isRedBlock ? '!' : block.type, block.x, block.y + 1);
     }
-    ctx.shadowBlur = 0;
   }
 
   _drawTrail(ctx, game) {
@@ -367,55 +267,17 @@ export class Renderer {
   _drawEnemies(ctx, game, now) {
     for (const e of game.enemies) {
       if (!e.alive) continue;
-      const col = e.color;
-      const r = e.radius * (0.85 + Math.sin(now * 5 + e.x * 0.1) * 0.15);
+      const r = e.radius;
+      const sprite = getEnemySprite(e.type, r);
+      const spriteSize = sprite.width;
 
-      // Outer ring
-      ctx.shadowColor = col;
-      ctx.shadowBlur = 12;
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = 0.4;
-      ctx.beginPath();
-      ctx.arc(e.x, e.y, r + 4, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Body
-      ctx.globalAlpha = 1;
-      const rG = ctx.createRadialGradient(e.x - r * 0.25, e.y - r * 0.25, r * 0.1, e.x, e.y, r);
-      rG.addColorStop(0, '#ffffff');
-      rG.addColorStop(0.35, col);
-      rG.addColorStop(1, col + '88');
-      ctx.fillStyle = rG;
-      ctx.beginPath();
-      ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Speed lines for speeders
-      if (e.type === 'speeder' && e.speed > e.baseSpeed * 0.8) {
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.3;
-        ctx.beginPath();
-        ctx.moveTo(e.x, e.y);
-        ctx.lineTo(e.x - e.vx * r * 2, e.y - e.vy * r * 2);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
-
-      // Arrow for chasers
-      if (e.type === 'chaser') {
-        const angle = Math.atan2(e.vy, e.vx);
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(e.x + Math.cos(angle) * (r + 2), e.y + Math.sin(angle) * (r + 2));
-        ctx.lineTo(e.x + Math.cos(angle) * (r + 8), e.y + Math.sin(angle) * (r + 8));
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      }
+      ctx.save();
+      // Subtle pulsing
+      const pulse = 0.9 + Math.sin(now * 5 + e.x * 0.1) * 0.1;
+      ctx.translate(e.x, e.y);
+      ctx.scale(pulse, pulse);
+      ctx.drawImage(sprite, -spriteSize / 2, -spriteSize / 2);
+      ctx.restore();
     }
   }
 
@@ -424,7 +286,7 @@ export class Renderer {
     if (!boss || !boss.alive) return;
 
     const r = boss.radius;
-    const pulse = Math.sin(now * 3) * 3;
+    const spriteSize = r * 2.5;
 
     // Telegraph warning
     if (boss.telegraphing) {
@@ -436,70 +298,48 @@ export class Renderer {
       ctx.stroke();
     }
 
-    // Hit flash
-    const mainColor = boss.hitFlash > 0 ? '#ffffff' : boss.color;
-
     // Boss aura
     ctx.shadowColor = boss.color;
     ctx.shadowBlur = 20;
     ctx.strokeStyle = boss.color;
     ctx.lineWidth = 2;
     ctx.globalAlpha = 0.3;
+    const pulse = Math.sin(now * 3) * 3;
     ctx.beginPath();
     ctx.arc(boss.x, boss.y, r + 8 + pulse, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    // Boss body
-    const bG = ctx.createRadialGradient(boss.x - r * 0.3, boss.y - r * 0.3, r * 0.1, boss.x, boss.y, r);
-    bG.addColorStop(0, '#ffffff');
-    bG.addColorStop(0.3, mainColor);
-    bG.addColorStop(1, boss.color + '66');
-    ctx.fillStyle = bG;
-    ctx.beginPath();
-    ctx.arc(boss.x, boss.y, r + pulse * 0.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Inner detail (eye/core)
-    ctx.fillStyle = '#ffffff';
-    ctx.globalAlpha = 0.7;
-    ctx.beginPath();
-    ctx.arc(boss.x, boss.y, r * 0.3, 0, Math.PI * 2);
-    ctx.fill();
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
 
     // Draw segments for centipede/snake bosses
     if (boss instanceof CentipedeBoss || boss instanceof SnakeBoss) {
-      for (let i = 0; i < boss.segments.length; i++) {
+      for (let i = boss.segments.length - 1; i >= 0; i--) {
         const seg = boss.segments[i];
         const segR = (boss instanceof CentipedeBoss ? 10 : 8) * (1 - i * 0.04);
-        ctx.fillStyle = boss.color + (boss.hitFlash > 0 ? 'ff' : 'cc');
+        const segColor = boss.hitFlash > 0 ? '#ffffff' : boss.color;
+        ctx.fillStyle = segColor;
+        ctx.globalAlpha = 0.8;
         ctx.beginPath();
         ctx.arc(seg.x, seg.y, segR, 0, Math.PI * 2);
         ctx.fill();
+        // Segment detail
+        ctx.fillStyle = boss.hitFlash > 0 ? '#ffffff' : '#000000';
+        ctx.globalAlpha = 0.2;
+        ctx.beginPath();
+        ctx.arc(seg.x, seg.y, segR * 0.4, 0, Math.PI * 2);
+        ctx.fill();
       }
+      ctx.globalAlpha = 1;
     }
+
+    // Boss sprite
+    const sprite = getBossSprite(boss.name, Math.round(spriteSize), boss.hitFlash > 0);
+    ctx.drawImage(sprite, boss.x - spriteSize / 2, boss.y - spriteSize / 2);
 
     // Draw second face for twin faces
     if (boss instanceof TwinFacesBoss) {
-      const bG2 = ctx.createRadialGradient(boss.x2 - r * 0.3, boss.y2 - r * 0.3, r * 0.1, boss.x2, boss.y2, r);
-      bG2.addColorStop(0, '#ffffff');
-      bG2.addColorStop(0.3, mainColor);
-      bG2.addColorStop(1, boss.color + '66');
-      ctx.fillStyle = bG2;
-      ctx.shadowColor = boss.color;
-      ctx.shadowBlur = 20;
-      ctx.beginPath();
-      ctx.arc(boss.x2, boss.y2, r + pulse * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.globalAlpha = 0.7;
-      ctx.beginPath();
-      ctx.arc(boss.x2, boss.y2, r * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
+      const sprite2 = getBossSprite(boss.name, Math.round(spriteSize), boss.hitFlash > 0);
+      ctx.drawImage(sprite2, boss.x2 - spriteSize / 2, boss.y2 - spriteSize / 2);
     }
 
     // HP bar above boss
@@ -507,7 +347,7 @@ export class Renderer {
       const barW = 40;
       const barH = 4;
       const bx = boss.x - barW / 2;
-      const by = boss.y - r - 15;
+      const by = boss.y - r - 18;
       ctx.fillStyle = '#330000';
       ctx.fillRect(bx, by, barW, barH);
       ctx.fillStyle = '#ff4444';
@@ -539,33 +379,20 @@ export class Renderer {
       ctx.shadowBlur = 0;
     }
 
-    // Ship body
+    // Player sprite (already pre-rotated based on direction)
     const dir = game.playerDir;
-    const angle = Math.atan2(dir[1], dir[0]);
+    const sprite = getPlayerSprite(dir, game.shieldTime > 0, game.drawing);
+    const spriteSize = sprite.width;
+
     ctx.save();
     ctx.translate(px, py);
-    ctx.rotate(angle);
-
+    // Glow behind ship
     ctx.shadowColor = game.drawing ? COLORS.trail : COLORS.border;
     ctx.shadowBlur = 14;
-    ctx.fillStyle = game.shieldTime > 0 ? COLORS.playerShield : COLORS.player;
-    ctx.beginPath();
-    ctx.moveTo(9, 0);
-    ctx.lineTo(-6, 6);
-    ctx.lineTo(-3, 0);
-    ctx.lineTo(-6, -6);
-    ctx.closePath();
-    ctx.fill();
-
-    // Engine glow
-    ctx.fillStyle = game.drawing ? COLORS.trail : '#88ffee';
-    ctx.globalAlpha = 0.9;
-    ctx.beginPath();
-    ctx.arc(-3, 0, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
+    ctx.drawImage(sprite, -spriteSize / 2, -spriteSize / 2);
     ctx.shadowBlur = 0;
+    ctx.restore();
+
     ctx.globalAlpha = 1;
   }
 
