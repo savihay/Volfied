@@ -158,7 +158,7 @@ function splitContour(mainContour, trail) {
     const v1 = mainContour[tFirst];
     if (dist(pLast, v1) > dist(pFirst, v1)) {
        let curr = (tLast + 1) % mainContour.length;
-       while (curr !== (tFirst + 1) % mainContour.length) {
+       for (let i = 0; i < mainContour.length; i++) {
          polyA.push(mainContour[curr]);
          curr = (curr + 1) % mainContour.length;
        }
@@ -184,7 +184,7 @@ function splitContour(mainContour, trail) {
     const v1 = mainContour[tFirst];
     if (dist(pFirst, v1) > dist(pLast, v1)) {
         let curr = (tFirst + 1) % mainContour.length;
-        while (curr !== (tLast + 1) % mainContour.length) {
+        for (let i = 0; i < mainContour.length; i++) {
           polyB.push(mainContour[curr]);
           curr = (curr + 1) % mainContour.length;
         }
@@ -209,12 +209,26 @@ function splitContour(mainContour, trail) {
   return [polyA, polyB];
 }
 
-function captureTerritory(contour, trail) {
+function captureTerritory(contour, trail, enemies = []) {
   const result = splitContour(contour, trail);
   if (!result) return null;
   const [polyA, polyB] = result;
+  
+  let scoreA = 0, scoreB = 0;
+  for (const e of enemies) {
+    const weight = (e.baseR > 9 || e.type === "shapeshifter") ? 10 : 1; 
+    if (pointInPoly(e.pt, polyA)) scoreA += weight;
+    if (pointInPoly(e.pt, polyB)) scoreB += weight;
+  }
+
   const areaA = polyArea(polyA);
   const areaB = polyArea(polyB);
+
+  // Keep the part with the boss/most enemies as the main contour
+  if (scoreA > scoreB) return { contour: polyA, captured: polyB, area: areaA };
+  if (scoreB > scoreA) return { contour: polyB, captured: polyA, area: areaB };
+
+  // If equal score, use area to determine main contour
   if (areaA >= areaB) return { contour: polyA, captured: polyB, area: areaA };
   return { contour: polyB, captured: polyA, area: areaB };
 }
@@ -522,10 +536,26 @@ export default function Volfied() {
         // Self-intersection (death!)
         if (g.trail.length >= 2) {
           const newSeg = [[g.player.x, g.player.y], candidate];
+          let hitSelf = false;
+          
+          // Check backtracking on the current segment
+          const lastPointInTrail = g.trail[g.trail.length - 2];
+          if (dist(lastPointInTrail, candidate) < dist(lastPointInTrail, [g.player.x, g.player.y]) - 0.1) {
+            hitSelf = true;
+          }
+
           for (let t = 0; t < g.trail.length - 2; t++) {
-            if (segsCross(newSeg, [g.trail[t], g.trail[t + 1]])) {
-              killPlayer(g); return;
+            const seg = [g.trail[t], g.trail[t + 1]];
+            if (segsCross(newSeg, seg) || ptOnSeg(candidate, seg, 1.5)) {
+              hitSelf = true; break;
             }
+            // Explicitly check if crossing precisely at a vertex
+            if (ptOnSeg(seg[0], newSeg, 0.1) || ptOnSeg(seg[1], newSeg, 0.1)) {
+              hitSelf = true; break;
+            }
+          }
+          if (hitSelf) {
+            killPlayer(g); return;
           }
         }
 
@@ -551,7 +581,7 @@ export default function Volfied() {
   function doCapture(g) {
     if (g.trail.length < 2) { g.drawing = false; g.trail = []; return; }
     try {
-      const result = captureTerritory(g.contour, g.trail);
+      const result = captureTerritory(g.contour, g.trail, g.enemies);
       if (result) {
         const { contour: newContour, area: newArea } = result;
         const oldProgress = g.progress;
